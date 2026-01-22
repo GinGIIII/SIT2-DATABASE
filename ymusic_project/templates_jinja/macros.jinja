@@ -1,0 +1,29 @@
+{% macro table(title, headers, rows, fields) %}
+  <h2>{{ title }}</h2>
+
+  <table>
+    <thead>
+      <tr>
+        {% for h in headers %}
+          <th>{{ h }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+
+    <tbody>
+      {% if rows and (rows|length > 0) %}
+        {% for r in rows %}
+          <tr>
+            {% for f in fields %}
+              <td>{{ r | getpath(f) }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="{{ headers|length }}">Нет данных</td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+{% endmacro %}

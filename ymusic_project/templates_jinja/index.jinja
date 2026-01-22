@@ -1,0 +1,201 @@
+{% import "macros.jinja" as m %}
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Яндекс Музыка — Датасет</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root{
+      --bg:#0b1220;
+      --text:#e7eefc;
+      --muted:#9bb0d1;
+      --border:rgba(255,255,255,.08);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:
+        radial-gradient(1200px 600px at 20% 0%, rgba(110,168,254,.15), transparent 60%),
+        radial-gradient(900px 500px at 100% 20%, rgba(120,90,255,.12), transparent 55%),
+        var(--bg);
+      color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .container{max-width:1200px; margin:32px auto; padding:0 16px;}
+    .header{display:flex; gap:16px; align-items:flex-end; justify-content:space-between; margin-bottom:18px;}
+    .title h1{margin:0; font-size:30px;}
+    .title p{margin:8px 0 0; color:var(--muted)}
+    .badge{
+      padding:8px 12px; border:1px solid var(--border); border-radius:999px;
+      background: rgba(255,255,255,.03); color:var(--muted); font-size:13px;
+    }
+
+    .grid{display:grid; grid-template-columns: repeat(12, 1fr); gap:14px; margin-top:14px;}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px 14px 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .card h2{margin:0 0 10px; font-size:16px; color:#cfe0ff; font-weight:650;}
+
+    .span-12{grid-column: span 12;}
+    .span-6{grid-column: span 6;}
+    @media (max-width: 980px){ .span-6{grid-column: span 12;} }
+
+    .kpis{display:grid; grid-template-columns: repeat(6, 1fr); gap:10px;}
+    @media (max-width: 980px){ .kpis{grid-template-columns: repeat(3, 1fr);} }
+    @media (max-width: 520px){ .kpis{grid-template-columns: repeat(2, 1fr);} }
+    .kpi{
+      display:flex; flex-direction:column; gap:4px;
+      padding:12px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(0,0,0,.18);
+    }
+    .kpi .label{color:var(--muted); font-size:12px}
+    .kpi .value{font-size:20px; font-weight:750}
+    .kpi .sub{color:var(--muted); font-size:12px}
+
+    table{width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px;}
+    thead th{
+      text-align:left; font-weight:650; font-size:12px; color:#cfe0ff;
+      padding:10px; background: rgba(110,168,254,.10); border-bottom:1px solid var(--border);
+      position: sticky; top: 0;
+    }
+    tbody td{padding:10px; border-bottom:1px solid var(--border); font-size:13px;}
+    tbody tr:hover{background: rgba(255,255,255,.03)}
+    .footer{margin:12px 0 0; color:var(--muted); font-size:12px}
+    code{background: rgba(255,255,255,.06); padding:2px 6px; border-radius:8px;}
+
+    .scrollbox{max-height:520px; overflow:auto; border-radius:12px;}
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    {# безопасные дефолты, чтобы ничего не падало #}
+    {% set year_min = (stats.get('year_min') if stats is mapping else None) or 2010 %}
+    {% set year_max = (stats.get('year_max') if stats is mapping else None) or 2025 %}
+    {% set organic_share = (stats.get('organic_share') if stats is mapping else None) %}
+
+    <div class="header">
+      <div class="title">
+        <h1>Яндекс Музыка — Датасет ({{ year_min }}–{{ year_max }})</h1>
+        <p>Django + PostgreSQL + Jinja2. Таблицы отношений + агрегированная статистика.</p>
+      </div>
+      <div class="badge">local: 127.0.0.1:8000</div>
+    </div>
+
+    <div class="card span-12">
+      <h2>Сводка</h2>
+      <div class="kpis">
+        <div class="kpi"><div class="label">Артисты</div><div class="value">{{ stats.get('artists_count', 0) }}</div></div>
+        <div class="kpi"><div class="label">Альбомы</div><div class="value">{{ stats.get('albums_count', 0) }}</div></div>
+        <div class="kpi"><div class="label">Треки</div><div class="value">{{ stats.get('tracks_count', 0) }}</div></div>
+        <div class="kpi"><div class="label">Активные пользователи</div><div class="value">{{ stats.get('users_count', 0) }}</div></div>
+        <div class="kpi"><div class="label">События</div><div class="value">{{ stats.get('events_count', 0) }}</div></div>
+
+        <div class="kpi">
+          <div class="label">Доля органики</div>
+          <div class="value">
+            {% if organic_share is not none %}
+              {{ (organic_share * 100) | round(2) }}%
+            {% else %}
+              n/a
+            {% endif %}
+          </div>
+          <div class="sub">среди событий с известным флагом</div>
+        </div>
+      </div>
+
+      <div class="footer">
+        Если значения 0 — импортируйте CSV:
+        <code>python manage.py import_yandex_music "data/spotify_data clean.csv" --reset</code>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card span-6">
+        {{ m.table("Артисты", ["id", "имя"], artists, ["id", "name"]) }}
+      </div>
+
+      <div class="card span-6">
+        {{ m.table("Альбомы", ["id", "артист", "название", "год"], albums,
+                   ["id", "artist.name", "title", "release_year"]) }}
+      </div>
+
+      <div class="card span-12">
+        {{ m.table("Треки", ["id", "артист", "альбом", "трек", "track_id"], tracks,
+                   ["id", "album.artist.name", "album.title", "title", "yandex_track_id"]) }}
+      </div>
+
+      <div class="card span-6">
+        {{ m.table("Активные пользователи", ["id", "yandex_user_id"], users, ["id", "yandex_user_id"]) }}
+      </div>
+
+      <div class="card span-6">
+        {{ m.table("Типы событий", ["id", "код", "кол-во"], events_by_type, ["id", "code", "cnt"]) }}
+      </div>
+
+      <div class="card span-12">
+        <h2>Последние события</h2>
+
+        <div class="scrollbox">
+          <table>
+            <thead>
+              <tr>
+                <th>время</th>
+                <th>пользователь</th>
+                <th>событие</th>
+                <th>трек</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ev in events %}
+                <tr>
+                  <td>
+                    {# ts может быть datetime, строкой или None — делаем безопасно #}
+                    {% if ev.ts is not none and ev.ts.strftime is defined %}
+                      {{ ev.ts.strftime("%Y-%m-%d %H:%M") }}
+                    {% else %}
+                      {{ ev.ts or "-" }}
+                    {% endif %}
+                  </td>
+                  <td>{{ ev.user.yandex_user_id }}</td>
+                  <td>{{ ev.event_type.code }}</td>
+                  <td>{{ ev.track.title }}</td>
+                </tr>
+              {% endfor %}
+              {% if events|length == 0 %}
+                <tr><td colspan="4">Нет данных</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        {{ m.table("Топ треков по событиям", ["артист", "трек", "события"], top_tracks,
+                   ["artist", "title", "listen_count"]) }}
+      </div>
+
+      <div class="card span-6">
+        {{ m.table("События по годам (2010–2025)", ["год", "события"], events_by_year, ["y", "cnt"]) }}
+      </div>
+
+      <div class="card span-12" style="opacity:.9">
+        <div class="footer">
+          Источник данных: Spotify Global Music Dataset (Kaggle).
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
